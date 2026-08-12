@@ -88,6 +88,7 @@ struct SynthVoice {
     var fmPhase: Float = 0
     var subPhase: Float = 0
     var tine: Decay = Decay()
+    var rng = Rng()
 
     var baseCutoff: Float = 2000
     var envDepth: Float = 0
@@ -111,6 +112,7 @@ struct SynthVoice {
         u0 = 0.00; u1 = 0.17; u2 = 0.33; u3 = 0.51
         u4 = 0.66; u5 = 0.79; u6 = 0.91
         fmPhase = 0; subPhase = 0
+        rng.state = 0x5EED_1234 ^ UInt32(bitPattern: Int32(pitch * 977))
         ladder.reset(); ladderR.reset()
         hp.reset(); hpR.reset()
         amp.hardReset(); fenv.hardReset()
@@ -240,8 +242,10 @@ struct SynthVoice {
         case .bass808:
             u0 += inc; if u0 >= 1 { u0 -= 1 }
             var s = fastSin(u0)
-            // The transient click is most of what a phone speaker hears.
-            s += rngLessClick() * tine.process() * 0.5
+            // The transient click is most of what a phone speaker hears of an
+            // 808. It has to be filtered noise — a raw ramp at a fixed
+            // increment aliases into a digital zap.
+            s += rng.next() * tine.process() * 0.35
             s = warm(s * 1.15, 0.25 + params.drive * 0.6)
             left = s; right = s
 
@@ -386,13 +390,5 @@ struct SynthVoice {
         guard cents > 0 else { return inc }
         let c = cents * Float(index) * 0.34
         return inc * powf(2.0, c / 1200.0)
-    }
-
-    /// A tiny deterministic impulse used for the 808 click; avoids carrying a
-    /// full RNG in every melodic voice.
-    @inline(__always) private mutating func rngLessClick() -> Float {
-        subPhase += 0.37
-        if subPhase >= 1 { subPhase -= 1 }
-        return subPhase * 2 - 1
     }
 }

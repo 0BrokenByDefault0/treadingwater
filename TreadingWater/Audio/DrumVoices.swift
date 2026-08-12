@@ -24,28 +24,26 @@ struct DrumParams {
     @inline(__always) func timingSamples(_ sr: Float) -> Float { timing * 0.012 * sr }
 }
 
-/// The six inharmonic ratios that make a square-wave bank read as metal
-/// instead of as a chord. This is the trick the TR-808 uses for its cymbals,
-/// and it is the single biggest reason filtered white noise sounds like a
-/// "lite" hi-hat by comparison.
+/// Six inharmonic ratios, the way the TR-808 builds metal. The base frequency
+/// matters as much as the ratios: too low and the bandpass has nothing but weak
+/// upper harmonics to work with, which is what makes a synthesised hat sound
+/// thin and whistly rather than metallic.
 private let metalRatios: (Float, Float, Float, Float, Float, Float) =
     (1.0, 1.4471, 1.6170, 1.9265, 2.5028, 2.6637)
 
 struct DrumVoice {
     var kind: DrumVoiceKind = .kick
     var active = false
-    var startDelay = 0          // samples of micro-timing offset
+    var startDelay = 0
 
     var params = DrumParams()
     var vel: Float = 1
     var t: Float = 0
 
-    // Oscillator phases.
     var p1: Float = 0, p2: Float = 0, p3: Float = 0
     var m0: Float = 0, m1: Float = 0, m2: Float = 0
     var m3: Float = 0, m4: Float = 0, m5: Float = 0
 
-    // Envelopes.
     var ampEnv = Decay()
     var subEnv = Decay()
     var noiseEnv = Decay()
@@ -59,7 +57,7 @@ struct DrumVoice {
     var rng = Rng()
     var dc = DCBlock()
 
-    var life: Float = 1          // seconds before the voice frees itself
+    var life: Float = 1
 
     // MARK: Trigger
 
@@ -83,68 +81,70 @@ struct DrumVoice {
 
         switch kind {
         case .kick:
-            // Two pitch envelopes: a very fast one for the beater click and a
-            // slower one for the body drop. That separation is what makes a
-            // kick sound like a drum rather than a sine sweep.
-            pitchEnv.trigger(0.006 + 0.008 * (1 - tone), sr)
-            pitchEnv2.trigger(0.055 + 0.05 * dec, sr)
-            ampEnv.trigger(0.16 + 0.55 * dec, sr)
-            subEnv.trigger(0.22 + 0.75 * dec, sr)
-            clickEnv.trigger(0.002 + 0.004 * tone, sr)
-            hp.highpass(1800 + 2500 * tone, q: 0.7, sr: sr)
-            life = 1.4
+            // Two pitch envelopes: a very fast one for the beater snap and a
+            // slower one for the body drop. Separating them is what makes a
+            // kick read as a drum rather than as a sine sweep.
+            pitchEnv.trigger(0.005 + 0.006 * (1 - tone), sr)
+            pitchEnv2.trigger(0.045 + 0.055 * dec, sr)
+            ampEnv.trigger(0.20 + 0.85 * dec, sr)
+            clickEnv.trigger(0.0018 + 0.003 * tone, sr)
+            hp.highpass(1600 + 2600 * tone, q: 0.7, sr: sr)
+            lp.lowpass(220 + 260 * tone, q: 0.7, sr: sr)
+            life = 1.6
 
         case .snare:
-            pitchEnv.trigger(0.020, sr)
-            ampEnv.trigger(0.055 + 0.10 * dec, sr)
-            noiseEnv.trigger(0.055 + 0.26 * dec, sr)
-            clickEnv.trigger(0.0025, sr)
-            bp.bandpass(1500 + 2200 * tone, q: 0.55, sr: sr)
-            hp.highpass(3200 + 3000 * tone, q: 0.7, sr: sr)
-            life = 0.9
+            pitchEnv.trigger(0.018, sr)
+            ampEnv.trigger(0.050 + 0.11 * dec, sr)
+            noiseEnv.trigger(0.050 + 0.28 * dec, sr)
+            clickEnv.trigger(0.0022, sr)
+            bp.bandpass(1450 + 2400 * tone, q: 0.5, sr: sr)
+            hp.highpass(3400 + 3200 * tone, q: 0.7, sr: sr)
+            life = 0.95
 
         case .clap:
-            noiseEnv.trigger(0.045 + 0.22 * dec, sr)
-            bp.bandpass(1050 + 900 * tone, q: 1.05, sr: sr)
-            hp.highpass(560, q: 0.7, sr: sr)
-            life = 0.8
+            noiseEnv.trigger(0.040 + 0.24 * dec, sr)
+            bp.bandpass(1000 + 1000 * tone, q: 1.0, sr: sr)
+            hp.highpass(600, q: 0.7, sr: sr)
+            life = 0.85
 
         case .closedHat:
-            noiseEnv.trigger(0.012 + 0.045 * dec, sr)
-            bp.bandpass((7200 + 3200 * tone) * ratio, q: 0.85, sr: sr)
-            hp.highpass(6200 * ratio, q: 0.7, sr: sr)
-            life = 0.35
+            noiseEnv.trigger(0.010 + 0.040 * dec, sr)
+            bp.bandpass((8200 + 2600 * tone) * ratio, q: 0.75, sr: sr)
+            hp.highpass(6800 * ratio, q: 0.7, sr: sr)
+            life = 0.32
 
         case .openHat:
-            noiseEnv.trigger(0.14 + 0.5 * dec, sr)
-            bp.bandpass((6800 + 3000 * tone) * ratio, q: 0.7, sr: sr)
-            hp.highpass(5400 * ratio, q: 0.7, sr: sr)
-            life = 1.2
+            noiseEnv.trigger(0.13 + 0.55 * dec, sr)
+            bp.bandpass((7600 + 2400 * tone) * ratio, q: 0.6, sr: sr)
+            hp.highpass(5800 * ratio, q: 0.7, sr: sr)
+            life = 1.3
 
         case .rim:
-            ampEnv.trigger(0.010 + 0.02 * dec, sr)
-            noiseEnv.trigger(0.004, sr)
-            bp.bandpass(1750 * ratio, q: 3.2, sr: sr)
-            hp.highpass(700, q: 0.7, sr: sr)
-            life = 0.3
+            ampEnv.trigger(0.009 + 0.018 * dec, sr)
+            noiseEnv.trigger(0.0035, sr)
+            bp.bandpass(1750 * ratio, q: 2.6, sr: sr)
+            hp.highpass(800, q: 0.7, sr: sr)
+            life = 0.28
 
         case .tom:
-            pitchEnv.trigger(0.045, sr)
-            ampEnv.trigger(0.20 + 0.5 * dec, sr)
-            noiseEnv.trigger(0.020, sr)
-            hp.highpass(120, q: 0.7, sr: sr)
-            life = 1.1
+            pitchEnv.trigger(0.042, sr)
+            ampEnv.trigger(0.22 + 0.55 * dec, sr)
+            noiseEnv.trigger(0.018, sr)
+            hp.highpass(110, q: 0.7, sr: sr)
+            life = 1.2
 
         case .perc:
-            ampEnv.trigger(0.045 + 0.16 * dec, sr)
-            bp.bandpass(1900 * ratio, q: 1.6, sr: sr)
-            life = 0.6
+            ampEnv.trigger(0.040 + 0.18 * dec, sr)
+            // Bandpass sits just above the two oscillators, which is what makes
+            // a cowbell read as metal instead of as two square waves.
+            bp.bandpass(1150 * ratio, q: 1.1, sr: sr)
+            life = 0.65
 
         case .crash:
-            noiseEnv.trigger(0.85 + 1.4 * dec, sr)
-            bp.bandpass(4200 + 2600 * tone, q: 0.45, sr: sr)
-            hp.highpass(2600, q: 0.6, sr: sr)
-            life = 3.2
+            noiseEnv.trigger(0.80 + 1.5 * dec, sr)
+            bp.bandpass(5200 + 2800 * tone, q: 0.4, sr: sr)
+            hp.highpass(3000, q: 0.6, sr: sr)
+            life = 3.4
         }
     }
 
@@ -167,87 +167,86 @@ struct DrumVoice {
         case .kick:
             let fast = pitchEnv.process()
             let slow = pitchEnv2.process()
-            // 52 Hz floor, +180 Hz slow drop, +420 Hz instantaneous snap.
-            let f = (50.0 + 175.0 * slow + 420.0 * fast) * ratio
+            // A single body oscillator. An independent sub layer at a fixed
+            // frequency drifts out of phase with the body once the sweep
+            // settles, and the two partially cancel — which is why the old
+            // kick had a hollow wobble in its tail.
+            let f = (47.0 + 150.0 * slow + 380.0 * fast) * ratio
             p1 += f * dt; if p1 >= 1 { p1 -= 1 }
             let body = fastSin(p1)
 
-            // Independent sub an octave down keeps weight after the drop.
-            p2 += (50.0 * ratio) * dt; if p2 >= 1 { p2 -= 1 }
-            let sub = fastSin(p2) * subEnv.process() * 0.55
-
             let amp = ampEnv.process()
             let clickAmt = clickEnv.process()
-            let click = hp.process(rng.next()) * clickAmt * (0.25 + 0.5 * tone)
+            let click = hp.process(rng.next()) * clickAmt * (0.30 + 0.55 * tone)
 
-            let driven = warm(body * amp * 1.25, params.drive)
-            out = driven + sub + click * 1.1
+            let driven = warm(body * amp * 1.3, params.drive)
+            out = driven * 0.9 + click
 
         case .snare:
             let pe = pitchEnv.process()
             let amp = ampEnv.process()
-            // Two detuned bodies. The slight beat between them is the "ring".
-            p1 += (183.0 * ratio + 90.0 * pe) * dt; if p1 >= 1 { p1 -= 1 }
-            p2 += (327.0 * ratio + 140.0 * pe) * dt; if p2 >= 1 { p2 -= 1 }
-            let body = (fastSin(p1) * 0.62 + fastSin(p2) * 0.34) * amp
+            p1 += (183.0 * ratio + 85.0 * pe) * dt; if p1 >= 1 { p1 -= 1 }
+            p2 += (327.0 * ratio + 130.0 * pe) * dt; if p2 >= 1 { p2 -= 1 }
+            let body = (fastSin(p1) * 0.60 + fastSin(p2) * 0.32) * amp
 
             let n = rng.next()
             let rattle = bp.process(n) * noiseEnv.process()
-            let crack = hp.process(n) * clickEnv.process() * 0.8
+            let crack = hp.process(n) * clickEnv.process() * 0.7
 
-            out = saturate(body * 0.85 + rattle * (0.9 + 0.5 * tone) + crack, params.drive * 0.6)
+            out = saturate(body * 0.8 + rattle * (0.85 + 0.45 * tone) + crack,
+                           params.drive * 0.6) * 0.85
 
         case .clap:
-            // Four bursts a few milliseconds apart with slight jitter, then a
-            // short diffuse tail. Real claps are many hands, not one.
-            var burst: Float = 0
-            if t < 0.0035 { burst = 1.0 }
-            else if t > 0.0098 && t < 0.0132 { burst = 0.92 }
-            else if t > 0.0201 && t < 0.0234 { burst = 0.86 }
-            else if t > 0.0298 && t < 0.0338 { burst = 0.78 }
-            let tail = noiseEnv.process() * 0.42
+            // Four hands a few milliseconds apart. Each burst gets its own
+            // fast envelope: gating noise with a rectangular window puts a
+            // step discontinuity at both edges, and those clicks are audible.
+            var burst = expf(-t * 520.0)
+            if t > 0.0100 { burst += expf(-(t - 0.0100) * 520.0) * 0.92 }
+            if t > 0.0205 { burst += expf(-(t - 0.0205) * 520.0) * 0.84 }
+            if t > 0.0305 { burst += expf(-(t - 0.0305) * 460.0) * 0.76 }
+            let tail = noiseEnv.process() * 0.38
             let n = hp.process(rng.next())
-            out = bp.process(n * (burst + tail)) * 2.4
+            out = bp.process(n * (burst * 0.55 + tail)) * 1.9
 
         case .closedHat, .openHat:
-            let metal = metalBank(baseHz: 318.0 * ratio, dt: dt)
+            // 820 Hz base: high enough that the square bank's harmonics have
+            // real energy where the bandpass is listening.
+            let metal = metalBank(baseHz: 820.0 * ratio, dt: dt)
             let env = noiseEnv.process()
-            // A little noise on top stops the bank sounding synthetic.
-            let n = rng.next() * 0.22
-            out = hp.process(bp.process(metal * 0.7 + n)) * env * 2.6
+            let n = rng.next() * 0.18
+            out = hp.process(bp.process(metal * 0.75 + n)) * env * 1.6
 
         case .rim:
             let amp = ampEnv.process()
             p1 += 1720.0 * ratio * dt; if p1 >= 1 { p1 -= 1 }
             p2 += 2790.0 * ratio * dt; if p2 >= 1 { p2 -= 1 }
-            let tone1 = fastSin(p1) * 0.7 + fastSin(p2) * 0.35
+            let tone1 = fastSin(p1) * 0.7 + fastSin(p2) * 0.3
             let tick = hp.process(rng.next()) * noiseEnv.process()
-            out = bp.process(tone1 * amp + tick * 0.8) * 2.2
+            out = bp.process(tone1 * amp + tick * 0.7) * 1.8
 
         case .tom:
             let pe = pitchEnv.process()
             let amp = ampEnv.process()
-            p1 += ((108.0 + 105.0 * pe) * ratio) * dt; if p1 >= 1 { p1 -= 1 }
-            let skin = rng.next() * noiseEnv.process() * 0.25
+            p1 += ((105.0 + 100.0 * pe) * ratio) * dt; if p1 >= 1 { p1 -= 1 }
+            let skin = rng.next() * noiseEnv.process() * 0.22
             out = hp.process(fastSin(p1) * amp + skin)
-            out = saturate(out, params.drive * 0.5)
+            out = saturate(out, params.drive * 0.5) * 0.9
 
         case .perc:
             let amp = ampEnv.process()
-            // Cowbell-style pair of detuned squares.
             let inc1 = 540.0 * ratio * dt
             let inc2 = 806.0 * ratio * dt
             p1 += inc1; if p1 >= 1 { p1 -= 1 }
             p2 += inc2; if p2 >= 1 { p2 -= 1 }
-            let sq = polyBlepSquare(p1, inc1, 0.5) * 0.34
-                   + polyBlepSquare(p2, inc2, 0.5) * 0.26
-            out = bp.process(sq) * amp * 1.6
+            let sq = polyBlepSquare(p1, inc1, 0.5) * 0.38
+                   + polyBlepSquare(p2, inc2, 0.5) * 0.30
+            out = bp.process(sq) * amp * 1.5
 
         case .crash:
-            let metal = metalBank(baseHz: 208.0 * ratio, dt: dt)
+            let metal = metalBank(baseHz: 540.0 * ratio, dt: dt)
             let env = noiseEnv.process()
-            let n = rng.next() * 0.45
-            out = hp.process(bp.process(metal * 0.5 + n)) * env * 1.9
+            let n = rng.next() * 0.40
+            out = hp.process(bp.process(metal * 0.55 + n)) * env * 1.3
         }
 
         t += dt
@@ -256,7 +255,6 @@ struct DrumVoice {
         return dc.process(out) * vel * params.gain
     }
 
-    /// Six square waves at inharmonic ratios, summed.
     @inline(__always) private mutating func metalBank(baseHz: Float, dt: Float) -> Float {
         let i0 = baseHz * metalRatios.0 * dt
         let i1 = baseHz * metalRatios.1 * dt

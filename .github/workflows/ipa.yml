@@ -62,3 +62,33 @@ jobs:
           path: TreadingWater-unsigned.ipa
           if-no-files-found: error
           retention-days: 30
+
+  # Renders every reference beat through the real engine so the audio can be
+  # listened to and measured without installing anything.
+  preview:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render previews
+        run: |
+          set -o pipefail
+          swift build -c release --product render-preview
+          swift run -c release render-preview render-out | tee render-report.txt
+
+      - name: Package previews
+        run: |
+          ls -lh render-out
+          cd render-out && zip -qry ../TreadingWater-previews.zip . && cd ..
+          ls -lh TreadingWater-previews.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TreadingWater-audio-previews
+          path: |
+            TreadingWater-previews.zip
+            render-report.txt
+          if-no-files-found: error
+          retention-days: 30

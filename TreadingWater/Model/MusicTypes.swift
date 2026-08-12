@@ -46,6 +46,17 @@ enum DelaySync: Int, Codable, CaseIterable, Identifiable {
     }
 }
 
+/// Which subdivision the swing setting displaces. Shuffled hip hop and trap
+/// swing the 16ths; garage, house and swung funk swing the 8ths, which moves
+/// twice as much material and is a completely different feel.
+enum SwingGrid: Int, Codable, CaseIterable, Identifiable {
+    case sixteenth = 0
+    case eighth
+
+    var id: Int { rawValue }
+    var name: String { self == .sixteenth ? "1/16" : "1/8" }
+}
+
 struct MixSettings: Codable, Equatable {
     var reverbSize: Double = 0.62
     var reverbDamp: Double = 0.5
@@ -64,6 +75,7 @@ struct MixSettings: Codable, Equatable {
     /// Timing and velocity jitter applied to every sequenced hit.
     var humanize: Double = 0.15
     var chorus: Double = 0.0
+    var swingGrid: SwingGrid = .sixteenth
 
     static let neutral = MixSettings()
 }
