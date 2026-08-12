@@ -6,13 +6,31 @@ struct TemplatesView: View {
     var body: some View {
         Sheet(serial: "004", kicker: "REFERENCE",
               title: "TEMPLATES",
-              subtitle: "Finished reference beats, pulled apart. Leave one playing next to your DAW while you build your own.") {
+              subtitle: "\(Templates.all.count) finished reference beats, pulled apart. Leave one playing next to your DAW while you build your own.") {
 
-            ForEach(Templates.all) { template in
-                NavigationLink { TemplateDetailView(template: template) } label: {
-                    TemplateCard(template: template)
+            ForEach(GenreFamily.allCases) { family in
+                let items = Templates.inFamily(family)
+                if !items.isEmpty {
+                    VStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Caption(family.rawValue, color: theme.fg)
+                            Rectangle().frame(height: 1)
+                                .foregroundStyle(theme.rule.opacity(0.4))
+                            Caption("\(items.count)")
+                        }
+                        .padding(.top, 6)
+                        Text(family.blurb)
+                            .font(TW.body(12.5))
+                            .foregroundStyle(theme.fgMuted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ForEach(items) { template in
+                            NavigationLink { TemplateDetailView(template: template) } label: {
+                                TemplateCard(template: template)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
             }
 
             Ticker(text: "REFERENCE · NOT A RULE · STEAL THE SKELETON", repeats: 3)

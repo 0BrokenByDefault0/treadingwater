@@ -1,6 +1,31 @@
 import Foundation
 import SwiftUI
 
+/// Templates are grouped so 30 of them stay browsable.
+enum GenreFamily: String, CaseIterable, Identifiable, Codable {
+    case hiphop = "HIP HOP"
+    case rnb    = "R&B / SOUL"
+    case house  = "HOUSE & CLUB"
+    case bass   = "BASS & BREAKS"
+    case global = "GLOBAL"
+    case chill  = "CHILL"
+    case pop    = "POP & SYNTH"
+
+    var id: String { rawValue }
+
+    var blurb: String {
+        switch self {
+        case .hiphop: return "Half-time backbeats and 808s."
+        case .rnb:    return "Space left for a voice."
+        case .house:  return "Four on the floor and its descendants."
+        case .bass:   return "Breakbeats and sub-heavy drops."
+        case .global: return "Syncopated, percussion-led."
+        case .chill:  return "Slow, swung, deliberately imperfect."
+        case .pop:    return "Bright, arranged, hook-first."
+        }
+    }
+}
+
 struct SectionNote: Identifiable {
     var id: String { section }
     var section: String
@@ -22,13 +47,14 @@ struct GenreTemplate: Identifiable {
     var mixNotes: [String]
     var mistakes: [String]
     var tint: Color
+    var family: GenreFamily = .hiphop
 
     var bpm: Double { beat.bpm }
 }
 
-// Patterns are written a bar at a time so they stay readable.
-private func p(_ a: String, _ b: String) -> String { a + b }
-private func p(_ a: String, _ b: String, _ c: String, _ d: String) -> String { a + b + c + d }
+// Patterns are written a bar at a time so they stay readable. Shared with the
+// other template files.
+func p(_ a: String, _ b: String) -> String { a + b }
 
 enum Templates {
 
@@ -111,7 +137,7 @@ enum Templates {
             "Hat rolls everywhere. One per 4 bars is the ceiling.",
             "Layering a big boomy kick on top of the 808. Use a short clicky one or none at all."
         ],
-        tint: Ink.orange
+        tint: Ink.orange, family: .hiphop
     )
 
     // MARK: BOOM BAP
@@ -191,7 +217,7 @@ enum Templates {
             "A bright, clicky trap kick. It fights the sample instead of sitting under it.",
             "Forgetting to filter the sample, then wondering why the kick has no power."
         ],
-        tint: Ink.clay
+        tint: Ink.clay, family: .hiphop
     )
 
     // MARK: DRILL
@@ -270,7 +296,7 @@ enum Templates {
             "Overlapping 808 notes. Cut each one before the next starts or you get permanent mud.",
             "Too much melody. Drill hooks are three or four notes, repeated."
         ],
-        tint: Ink.plum
+        tint: Ink.plum, family: .hiphop
     )
 
     // MARK: HOUSE
@@ -354,7 +380,7 @@ enum Templates {
             "A short intro. If a DJ can't beatmatch into it, it won't get played.",
             "Chords on the downbeat with the kick. Move them to the off-beats and it grooves."
         ],
-        tint: Ink.amber
+        tint: Ink.amber, family: .house
     )
 
     // MARK: LO-FI
@@ -434,7 +460,7 @@ enum Templates {
             "Perfect quantisation. Turn the swing up and drag hits off the grid by hand.",
             "Too many layers. If you're on element six, delete two."
         ],
-        tint: Ink.claySoft
+        tint: Ink.claySoft, family: .chill
     )
 
     // MARK: AFROBEATS
@@ -519,7 +545,7 @@ enum Templates {
             "Root-note-only bass. The bass needs to sing here.",
             "Straight, unswung hats. Add 15% and it starts rolling."
         ],
-        tint: Ink.orange
+        tint: Ink.orange, family: .global
     )
 
     // MARK: DRUM & BASS
@@ -598,7 +624,7 @@ enum Templates {
             "Too much reverb on the drums themselves. Send the snare only.",
             "Short sections. DnB drops run 32 bars minimum."
         ],
-        tint: Ink.steel
+        tint: Ink.steel, family: .bass
     )
 
     // MARK: R&B / POP
@@ -683,12 +709,23 @@ enum Templates {
             "Straight triads. Add the 7th and 9th and it immediately sounds like R&B.",
             "Too much going on in the hook. Add one element, not four."
         ],
-        tint: Ink.plum
+        tint: Ink.plum, family: .rnb
     )
 
-    static let all: [GenreTemplate] = [trap, boomBap, drill, house, lofi, afrobeats, dnb, rnb]
+    static let all: [GenreTemplate] =
+        [trap, boomBap, drill] + HipHopTemplates.all
+        + [rnb] + SoulTemplates.all
+        + [house] + ClubTemplates.all
+        + [dnb] + BassTemplates.all
+        + [afrobeats] + GlobalTemplates.all
+        + [lofi] + ChillTemplates.all
+        + PopTemplates.all
 
     static func template(_ id: String) -> GenreTemplate? {
         all.first { $0.id == id }
+    }
+
+    static func inFamily(_ f: GenreFamily) -> [GenreTemplate] {
+        all.filter { $0.family == f }
     }
 }

@@ -476,7 +476,9 @@ final class MixEngine {
                 out.r = mid - side
             }
 
-            out = master.process(out * masterVolume)
+            // Headroom trim. Without it the summed buses slam the limiter on
+            // every hit and the whole mix pumps.
+            out = master.process(out * masterVolume * 0.55)
 
             left[frame] = out.l
             right[frame] = out.r

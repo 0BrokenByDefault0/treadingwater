@@ -109,14 +109,14 @@ struct DrumVoice {
 
         case .closedHat:
             noiseEnv.trigger(0.010 + 0.040 * dec, sr)
-            bp.bandpass((8200 + 2600 * tone) * ratio, q: 0.75, sr: sr)
-            hp.highpass(6800 * ratio, q: 0.7, sr: sr)
+            bp.bandpass((8200 + 2600 * tone) * ratio, q: 0.55, sr: sr)
+            hp.highpass(4200 * ratio, q: 0.7, sr: sr)
             life = 0.32
 
         case .openHat:
             noiseEnv.trigger(0.13 + 0.55 * dec, sr)
-            bp.bandpass((7600 + 2400 * tone) * ratio, q: 0.6, sr: sr)
-            hp.highpass(5800 * ratio, q: 0.7, sr: sr)
+            bp.bandpass((7600 + 2400 * tone) * ratio, q: 0.5, sr: sr)
+            hp.highpass(3800 * ratio, q: 0.7, sr: sr)
             life = 1.3
 
         case .rim:
@@ -206,7 +206,7 @@ struct DrumVoice {
             if t > 0.0305 { burst += expf(-(t - 0.0305) * 460.0) * 0.76 }
             let tail = noiseEnv.process() * 0.38
             let n = hp.process(rng.next())
-            out = bp.process(n * (burst * 0.55 + tail)) * 1.9
+            out = bp.process(n * (burst * 0.55 + tail)) * 5.2
 
         case .closedHat, .openHat:
             // 820 Hz base: high enough that the square bank's harmonics have
@@ -214,7 +214,7 @@ struct DrumVoice {
             let metal = metalBank(baseHz: 820.0 * ratio, dt: dt)
             let env = noiseEnv.process()
             let n = rng.next() * 0.18
-            out = hp.process(bp.process(metal * 0.75 + n)) * env * 1.6
+            out = hp.process(bp.process(metal * 0.75 + n)) * env * 7.5
 
         case .rim:
             let amp = ampEnv.process()
@@ -222,7 +222,7 @@ struct DrumVoice {
             p2 += 2790.0 * ratio * dt; if p2 >= 1 { p2 -= 1 }
             let tone1 = fastSin(p1) * 0.7 + fastSin(p2) * 0.3
             let tick = hp.process(rng.next()) * noiseEnv.process()
-            out = bp.process(tone1 * amp + tick * 0.7) * 1.8
+            out = bp.process(tone1 * amp + tick * 0.7) * 3.4
 
         case .tom:
             let pe = pitchEnv.process()
@@ -240,13 +240,13 @@ struct DrumVoice {
             p2 += inc2; if p2 >= 1 { p2 -= 1 }
             let sq = polyBlepSquare(p1, inc1, 0.5) * 0.38
                    + polyBlepSquare(p2, inc2, 0.5) * 0.30
-            out = bp.process(sq) * amp * 1.5
+            out = bp.process(sq) * amp * 2.9
 
         case .crash:
             let metal = metalBank(baseHz: 540.0 * ratio, dt: dt)
             let env = noiseEnv.process()
             let n = rng.next() * 0.40
-            out = hp.process(bp.process(metal * 0.55 + n)) * env * 1.3
+            out = hp.process(bp.process(metal * 0.55 + n)) * env * 2.4
         }
 
         t += dt

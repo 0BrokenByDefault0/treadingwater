@@ -149,20 +149,57 @@ func expectedStepTimes(_ beat: Beat, loops: Int) -> [Double] {
     return out
 }
 
-/// For each detected onset, the distance to the nearest expected step.
+/// Asks the only question that matters: did each scheduled hit actually land
+/// where it was scheduled? Measuring the other direction — nearest expected
+/// step for each detected onset — counts delay repeats and reverb swells as
+/// timing errors, which is how the first run produced 1.5-second "deviations".
 func timingReport(_ detected: [Double], _ expected: [Double]) -> (Double, Double, Int) {
-    guard !detected.isEmpty, !expected.isEmpty else { return (0, 0, 0) }
+    guard !expected.isEmpty else { return (0, 0, 0) }
     var total = 0.0
     var worst = 0.0
-    var strays = 0
-    for d in detected {
+    var missed = 0
+    var counted = 0
+    for e in expected {
         var best = Double.greatestFiniteMagnitude
-        for e in expected { best = min(best, abs(d - e)) }
+        for d in detected { best = min(best, abs(d - e)) }
+        if best > 0.080 {
+            missed += 1
+            continue
+        }
         total += best
         worst = max(worst, best)
-        if best > 0.035 { strays += 1 }
+        counted += 1
     }
-    return (total / Double(detected.count) * 1000, worst * 1000, strays)
+    let avg = counted > 0 ? total / Double(counted) * 1000 : 0
+    return (avg, worst * 1000, missed)
+}
+
+/// Strips every effect and mutes the melodic parts so the timing pass measures
+/// drum onsets and nothing else.
+func timingVariant(_ beat: Beat) -> Beat {
+    var b = beat
+    b.melodies = []
+    b.mix.reverbSize = 0
+    b.mix.delayFeedback = 0
+    b.mix.chorus = 0
+    b.mix.sidechain = 0
+    b.mix.humanize = 0
+    b.mix.drumGlue = 0
+    for i in b.drums.indices {
+        b.drums[i].mix.reverb = 0
+        b.drums[i].mix.delay = 0
+    }
+    return b
+}
+
+/// Runs the dry timing pass for a beat.
+func analyseTiming(_ beat: Beat) -> (Double, Double, Int) {
+    let dry = timingVariant(beat)
+    let (l, r) = renderBeat(dry, loops: 2, tail: 0.05, humanize: false)
+    let secondsPerStep = 60.0 / beat.bpm / 4.0
+    let loopEnd = secondsPerStep * Double(beat.steps) * 2
+    let det = onsets(l, r).filter { $0 <= loopEnd }
+    return timingReport(det, expectedStepTimes(dry, loops: 2))
 }
 
 // MARK: - Per-voice balance
@@ -204,16 +241,14 @@ for drum in Drum.allCases {
 
 print("\n== TEMPLATES ==")
 print(pad("NAME", 15) + lpad("BPM", 5) + lpad("PEAK dB", 9) + lpad("RMS dB", 9)
-      + lpad("CLIP", 6) + lpad("AVG ms", 8) + lpad("MAX ms", 8) + lpad("STRAY", 6))
+      + lpad("CLIP", 6) + lpad("AVG ms", 8) + lpad("MAX ms", 8) + lpad("MISS", 6))
 
 var manifest: [String] = []
 
 for t in Templates.all {
     let (l, r) = renderBeat(t.beat, loops: 2, tail: 1.5, humanize: true)
     let s = stats(l, r)
-    let det = onsets(l, r)
-    let exp = expectedStepTimes(t.beat, loops: 2)
-    let (avg, worst, strays) = timingReport(det, exp)
+    let (avg, worst, strays) = analyseTiming(t.beat)
 
     let file = "\(outDir)/\(t.id).wav"
     writeWAV(path: file, left: l, right: r, sampleRate: Int(sr))
@@ -246,9 +281,7 @@ let demos: [(String, Beat)] = [
 for (name, beat) in demos {
     let (l, r) = renderBeat(beat, loops: 2, tail: 1.2, humanize: true)
     let s = stats(l, r)
-    let det = onsets(l, r)
-    let exp = expectedStepTimes(beat, loops: 2)
-    let (avg, worst, strays) = timingReport(det, exp)
+    let (avg, worst, strays) = analyseTiming(beat)
     writeWAV(path: "\(outDir)/demo-\(name).wav", left: l, right: r, sampleRate: Int(sr))
     manifest.append("demo-\(name).wav — \(beat.name)")
     print(pad(name, 17) + lpad(db(s.peak), 9) + lpad(db(s.rms), 9)
