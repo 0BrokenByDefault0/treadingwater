@@ -13,12 +13,13 @@ enum DemoBeats {
     )
 
     static let threeJobs = Beat(
-        name: "THREE JOBS", bpm: 92, steps: 16,
+        name: "THREE JOBS", bpm: 92, swing: 0.10, steps: 16,
         drums: [
             DrumTrack(.kick,      "x-------x--x----"),
             DrumTrack(.snare,     "----x-------x---"),
             DrumTrack(.closedHat, "x-o-x-o-x-o-x-o-")
-        ]
+        ],
+        mix: MixSettings(sidechain: 0.2, drumDrive: 0.26, humanize: 0.2)
     )
 
     static let fourOnFloor = Beat(
@@ -28,7 +29,8 @@ enum DemoBeats {
             DrumTrack(.clap,      "----x-------x---"),
             DrumTrack(.openHat,   "--x---x---x---x-"),
             DrumTrack(.closedHat, "x-x-x-x-x-x-x-x-", gain: 0.5)
-        ]
+        ],
+        mix: MixSettings(sidechain: 0.55, sidechainRelease: 0.2, width: 0.45)
     )
 
     static let boomBapSkeleton = Beat(
@@ -37,7 +39,9 @@ enum DemoBeats {
             DrumTrack(.kick,      "x---------x-----"),
             DrumTrack(.snare,     "----x-------x---"),
             DrumTrack(.closedHat, "x-o-x-o-x-o-x-o-")
-        ]
+        ],
+        mix: MixSettings(drumDrive: 0.42, drumGlue: 0.5, masterDrive: 0.22,
+                         width: 0.16, humanize: 0.4)
     )
 
     static let trapSkeleton = Beat(
@@ -46,7 +50,8 @@ enum DemoBeats {
             DrumTrack(.kick,      "x-----x---x-----"),
             DrumTrack(.snare,     "--------x-------"),
             DrumTrack(.closedHat, "x.x.x.x.x.x.x.x.")
-        ]
+        ],
+        mix: MixSettings(sidechain: 0.35, drumDrive: 0.3, humanize: 0.1)
     )
 
     static let hatsSixteenth = Beat(
@@ -73,7 +78,8 @@ enum DemoBeats {
             DrumTrack(.kick,      "x-------x--x----"),
             DrumTrack(.snare,     "----x-------x---"),
             DrumTrack(.closedHat, "xxxxxxxxxxxxxxxx")
-        ]
+        ],
+        mix: MixSettings(humanize: 0.0)
     )
 
     static let velocityShaped = Beat(
@@ -82,7 +88,8 @@ enum DemoBeats {
             DrumTrack(.kick,      "x-------x--x----"),
             DrumTrack(.snare,     "----x--.----x-.-"),
             DrumTrack(.closedHat, "x.o.x.o.x.o.x.o.")
-        ]
+        ],
+        mix: MixSettings(humanize: 0.35)
     )
 
     /// i – VI – III – VII in A minor, four bars, chords only.
@@ -94,8 +101,9 @@ enum DemoBeats {
                 Note(53, 16, 15), Note(57, 16, 15), Note(60, 16, 15),   // F
                 Note(60, 32, 15), Note(64, 32, 15), Note(67, 32, 15),   // C
                 Note(55, 48, 15), Note(59, 48, 15), Note(62, 48, 15)    // G
-            ])
-        ]
+            ]).character(gain: 0.6, reverb: 0.3)
+        ],
+        mix: MixSettings(reverbSize: 0.7, chorus: 0.2)
     )
 
     static let bassWithKick = Beat(
@@ -109,8 +117,9 @@ enum DemoBeats {
             MelodyTrack("BASS", .bass, [
                 Note(33, 0, 8, vel: 0.9),
                 Note(33, 10, 5, vel: 0.8)
-            ])
-        ]
+            ]).character(gain: 0.9, drive: 0.3)
+        ],
+        mix: MixSettings(sidechain: 0.4, drumDrive: 0.3, humanize: 0.25)
     )
 
     /// Four notes, said twice, with the ending changed the second time.
@@ -129,7 +138,8 @@ enum DemoBeats {
             MelodyTrack("BASS", .bass, [
                 Note(33, 0, 8), Note(33, 10, 5),
                 Note(29, 16, 8), Note(29, 26, 5)
-            ])
-        ]
+            ]).character(gain: 0.85, drive: 0.25)
+        ],
+        mix: MixSettings(sidechain: 0.4, drumDrive: 0.28, humanize: 0.2)
     )
 }

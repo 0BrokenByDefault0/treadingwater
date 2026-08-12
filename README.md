@@ -125,24 +125,61 @@ TreadingWater/
 
 ### The audio engine
 
-There is no sampler and no bundled audio. `AVAudioSourceNode` drives a
-per-sample render loop:
+There is no sampler and no bundled audio — but this is not a beeping toy
+sequencer either. `AVAudioSourceNode` drives a per-sample render loop feeding a
+real mixer.
 
-- **Drums** are synthesised — the kick is a pitch-swept sine through a soft
-  clipper, the snare is two tones plus high-passed noise, the clap is three
-  noise bursts a few milliseconds apart, hats are filtered noise with different
-  decay times.
-- **Melodic voices** are poly-BLEP saws, pulses and sines through a Chamberlin
-  state-variable filter with per-voice envelopes. Six timbres: sub, bass, keys,
-  lead, pluck, bell.
-- **The sequencer** runs inside the render callback with sample-accurate step
-  timing and swing applied to the off-sixteenths only.
+**Drum voices** (`DrumVoices.swift`) are multi-layered:
 
-Nothing allocates on the audio thread. Pattern edits are written into a staging
-grid of flat preallocated buffers and picked up via `os_unfair_lock_trylock`;
-auditions arrive through a single-producer ring buffer of packed `Int32`
-commands. The playhead and output level are published back to the UI by a
-30 Hz timer rather than from the render thread.
+- **Kick** — two independent pitch envelopes (a ~6 ms beater snap and a ~60 ms
+  body drop), a separate sub oscillator that survives the drop, a high-passed
+  noise click, and asymmetric drive. Tunable in semitones.
+- **Hats and cymbals** — six square oscillators at inharmonic ratios
+  (1, 1.4471, 1.6170, 1.9265, 2.5028, 2.6637) through a bandpass and highpass.
+  This is how the TR-808 builds metal, and it is the single biggest reason
+  filtered white noise reads as a "lite" hi-hat by comparison.
+- **Snare** — two detuned bodies with a pitch drop, bandpassed rattle on its own
+  envelope, and a separate highpassed crack transient.
+- **Clap** — four noise bursts a few milliseconds apart plus a diffuse tail,
+  because a real clap is many hands rather than one hit.
+
+Every lane carries **tune, tone, decay, drive, pan, level and reverb send**, so
+a boom-bap kick and a trap kick are genuinely different instruments.
+
+**Melodic voices** (`SynthVoices.swift`) are ten timbres — sub, 808, bass,
+reese, keys, pad, pluck, lead, bell, organ — built from poly-BLEP saws and
+pulses in unison stacks up to seven wide with stereo spread, two-operator FM for
+the electric piano and bell, and additive drawbars for the organ. Each runs
+through a zero-delay-feedback ladder filter with its own amplitude and filter
+envelopes. The 808 glides between notes.
+
+**The mix** (`Effects.swift`) is where the templates stop sounding like
+sketches:
+
+- Drum, bass and music **buses**, with saturation and glue compression on the
+  drums and the bass summed to mono.
+- **Kick-triggered sidechain ducking** with a shaped release curve — a drawn
+  volume envelope rather than a compressor, which is what modern production
+  actually does.
+- An eight-comb / four-allpass **Freeverb-style reverb** with pre-delay, and a
+  tempo-synced **ping-pong delay**, both on sends with per-track amounts.
+- A **chorus** on the music bus, mid/side **width**, and a **master chain** of
+  saturation, glue compression, a high shelf and a soft limiter.
+- **Humanize** applies per-hit timing and velocity jitter, and every track has
+  its own micro-timing offset — which is how the boom-bap snare lands 4 ms late
+  and the lo-fi keys drag behind the grid.
+
+**The sequencer** runs inside the render callback with sample-accurate step
+timing and swing applied to the off-sixteenths only.
+
+Nothing allocates on the audio thread. Pattern edits and every mix parameter are
+written into a staging grid of flat preallocated buffers and picked up via
+`os_unfair_lock_trylock`; auditions arrive through a single-producer ring buffer
+of packed `Int32` commands. Comb and allpass filters are structs pointing into
+memory the reverb owns, so no reference counting reaches the render loop. The
+reverb and delay idle out four seconds after their last input rather than
+burning cycles on silence. The playhead, output level and gain reduction are
+published back to the UI by a 30 Hz timer.
 
 The audio session uses `.playback` with `.mixWithOthers`, so the app never
 ducks or interrupts whatever else is playing — which is the whole point when
@@ -152,7 +189,7 @@ the phone is sitting next to a DAW.
 
 ## A note on scope
 
-The labs are for learning placement, velocity and harmony. They are deliberately
-not a portable DAW: the synthesised kick will not sound like a $200 sample pack,
-and it isn't trying to. The finished beat gets made in Ableton — this is the
-thing you keep open next to it.
+The labs are for learning placement, velocity, harmony and mixing. They are
+deliberately not a portable DAW, and a synthesised kit will never have the
+character of a well-recorded sample. The finished beat gets made in Ableton —
+this is the thing you keep open next to it.

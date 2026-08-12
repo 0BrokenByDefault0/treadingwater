@@ -331,27 +331,34 @@ struct PianoRollView: View {
             VStack(alignment: .leading, spacing: 10) {
                 VStack(alignment: .leading, spacing: 4) {
                     Caption("SOUND")
-                    HStack(spacing: 4) {
-                        ForEach(TrackTimbre.allCases) { t in
-                            Button {
-                                timbre = t
-                                if !store.rollSketch.melodies.isEmpty {
-                                    store.rollSketch.melodies[0].timbre = t
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 4) {
+                            ForEach(TrackTimbre.allCases) { t in
+                                Button {
+                                    timbre = t
+                                    if !store.rollSketch.melodies.isEmpty {
+                                        store.rollSketch.melodies[0].timbre = t
+                                        store.rollSketch.melodies[0].mix = t.defaultMix
+                                    }
+                                    refresh()
+                                    audio.audition(pitch: t.isLowEnd ? 40 : 64, timbre: t)
+                                } label: {
+                                    Text(t.name)
+                                        .font(TW.label(8.5))
+                                        .foregroundStyle(timbre == t ? theme.bg : theme.fg)
+                                        .frame(width: 54)
+                                        .padding(.vertical, 8)
+                                        .background(timbre == t ? Ink.plum : Color.clear)
+                                        .overlay(Rectangle().strokeBorder(theme.rule, lineWidth: 1))
                                 }
-                                refresh()
-                                audio.audition(pitch: 60, timbre: t)
-                            } label: {
-                                Text(t.name)
-                                    .font(TW.label(8))
-                                    .foregroundStyle(timbre == t ? theme.bg : theme.fg)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 7)
-                                    .background(timbre == t ? Ink.plum : Color.clear)
-                                    .overlay(Rectangle().strokeBorder(theme.rule, lineWidth: 1))
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    Text(timbre.blurb)
+                        .font(TW.body(12.5))
+                        .foregroundStyle(theme.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {

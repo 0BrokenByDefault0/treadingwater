@@ -20,8 +20,8 @@ final class Store: ObservableObject {
     private enum Keys {
         static let completed = "tw.completed"
         static let lastLesson = "tw.lastLesson"
-        static let drumSketch = "tw.drumSketch"
-        static let rollSketch = "tw.rollSketch"
+        static let drumSketch = "tw.drumSketch.v2"
+        static let rollSketch = "tw.rollSketch.v2"
     }
 
     init() {
@@ -88,7 +88,8 @@ final class Store: ObservableObject {
             DrumTrack(.perc,      "----------------"),
             DrumTrack(.tom,       "----------------"),
             DrumTrack(.crash,     "----------------")
-        ]
+        ],
+        mix: MixSettings(sidechain: 0.25, drumDrive: 0.25, humanize: 0.2)
     )
 
     static let starterRoll = Beat(
@@ -101,7 +102,8 @@ final class Store: ObservableObject {
             MelodyTrack("LEAD", .keys, [
                 Note(69, 0, 4), Note(72, 4, 4), Note(76, 8, 4), Note(72, 12, 4)
             ])
-        ]
+        ],
+        mix: MixSettings(sidechain: 0.25, drumDrive: 0.25, humanize: 0.2)
     )
 
     /// Every drum lane exists in the sketch so the lab grid is stable.

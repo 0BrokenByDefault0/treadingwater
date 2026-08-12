@@ -42,6 +42,7 @@ struct DrumLabView: View {
             brushRail
             gridPanel
             if let focusDrum { rolePanel(focusDrum) }
+            mixPanel
             recipes
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -58,7 +59,8 @@ struct DrumLabView: View {
                 // Truncate to a single bar so it drops straight into the lab grid.
                 next.drums = beat.drums.map { track in
                     DrumTrack(drum: track.drum,
-                              vel: Array(track.vel.prefix(16)))
+                              vel: Array(track.vel.prefix(16)),
+                              mix: track.mix)
                 }
                 store.drumSketch = padded(next)
                 audio.load(store.drumSketch)
@@ -208,12 +210,21 @@ struct DrumLabView: View {
     }
 
     private func rolePanel(_ drum: Drum) -> some View {
-        Panel(serial: "ROL", title: drum.name, tint: drum.tint) {
-            VStack(alignment: .leading, spacing: 8) {
+        Panel(serial: "SND", title: "\(drum.name) — SOUND DESIGN", tint: drum.tint) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text(drum.role)
-                    .font(TW.body(14.5))
+                    .font(TW.body(14))
                     .foregroundStyle(theme.fg)
                     .fixedSize(horizontal: false, vertical: true)
+
+                knob("TUNE", laneBinding(drum, \.tune), -12...12, format: { "\(Int($0)) ST" })
+                knob("TONE", laneBinding(drum, \.tone), 0...1, format: pct)
+                knob("DECAY", laneBinding(drum, \.decay), 0...1, format: pct)
+                knob("DRIVE", laneBinding(drum, \.drive), 0...1, format: pct)
+                knob("REVERB", laneBinding(drum, \.reverb), 0...0.6, format: pct)
+                knob("PAN", laneBinding(drum, \.pan), -1...1, format: panLabel)
+                knob("LEVEL", laneBinding(drum, \.gain), 0...1.4, format: pct)
+
                 Button { audio.audition(drum) } label: {
                     Text("AUDITION")
                         .font(TW.label(9)).tracking(1.2)
@@ -224,6 +235,88 @@ struct DrumLabView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    // MARK: Mix
+
+    private var mixPanel: some View {
+        Panel(serial: "MIX", title: "BUS & MASTER", trailing: "STAGE 05") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("These are the same controls the MIXING stage describes. Move one while the loop plays and you'll hear exactly what the lesson means.")
+                    .font(TW.body(12.5))
+                    .foregroundStyle(theme.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                knob("SIDECHAIN", mixBinding(\.sidechain), 0...1, format: pct)
+                knob("SC RELEASE", mixBinding(\.sidechainRelease), 0.04...0.4,
+                     format: { "\(Int($0 * 1000)) MS" })
+                knob("DRUM DRIVE", mixBinding(\.drumDrive), 0...1, format: pct)
+                knob("DRUM GLUE", mixBinding(\.drumGlue), 0...1, format: pct)
+                knob("REVERB SIZE", mixBinding(\.reverbSize), 0...1, format: pct)
+                knob("REVERB DAMP", mixBinding(\.reverbDamp), 0...1, format: pct)
+                knob("WIDTH", mixBinding(\.width), 0...1, format: pct)
+                knob("HUMANIZE", mixBinding(\.humanize), 0...1, format: pct)
+                knob("MASTER DRIVE", mixBinding(\.masterDrive), 0...0.6, format: pct)
+
+                HStack(spacing: 8) {
+                    Caption("GAIN REDUCTION")
+                    MeterBar(value: min(1, audio.gainReduction / 8.0), segments: 16, tint: Ink.amber)
+                    Text("\(String(format: "%.1f", audio.gainReduction)) dB")
+                        .font(TW.mono(10, .bold))
+                        .foregroundStyle(theme.fgMuted)
+                }
+            }
+        }
+    }
+
+    // MARK: Control helpers
+
+    private func knob(_ label: String, _ binding: Binding<Double>,
+                      _ range: ClosedRange<Double>,
+                      format: @escaping (Double) -> String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Caption(label)
+                Spacer()
+                Text(format(binding.wrappedValue))
+                    .font(TW.mono(10, .bold))
+                    .foregroundStyle(theme.fg)
+            }
+            Slider(value: binding, in: range).tint(theme.accent)
+        }
+    }
+
+    private func pct(_ v: Double) -> String { "\(Int(v * 100))%" }
+
+    private func panLabel(_ v: Double) -> String {
+        if abs(v) < 0.03 { return "C" }
+        return "\(v < 0 ? "L" : "R")\(Int(abs(v) * 100))"
+    }
+
+    private func mixBinding(_ path: WritableKeyPath<MixSettings, Double>) -> Binding<Double> {
+        Binding(
+            get: { store.drumSketch.mix[keyPath: path] },
+            set: {
+                store.drumSketch.mix[keyPath: path] = $0
+                audio.upload(store.drumSketch)
+            }
+        )
+    }
+
+    private func laneBinding(_ drum: Drum,
+                             _ path: WritableKeyPath<TrackMix, Double>) -> Binding<Double> {
+        Binding(
+            get: {
+                store.drumSketch.drums.first { $0.drum == drum }?.mix[keyPath: path]
+                    ?? drum.defaultMix[keyPath: path]
+            },
+            set: { newValue in
+                guard let i = store.drumSketch.drums.firstIndex(where: { $0.drum == drum })
+                else { return }
+                store.drumSketch.drums[i].mix[keyPath: path] = newValue
+                audio.upload(store.drumSketch)
+            }
+        )
     }
 
     // MARK: Recipes
@@ -267,7 +360,7 @@ struct DrumLabView: View {
     private func padded(_ beat: Beat) -> Beat {
         var out = beat
         for drum in Drum.allCases where !out.drums.contains(where: { $0.drum == drum }) {
-            out.drums.append(DrumTrack(drum: drum, vel: []))
+            out.drums.append(DrumTrack(drum: drum, vel: [], mix: drum.defaultMix))
         }
         for i in out.drums.indices {
             var v = out.drums[i].vel
@@ -407,13 +500,18 @@ struct PresetPickerView: View {
     var onPick: (Beat) -> Void
 
     private var options: [(String, String, Beat)] {
-        [
+        var out: [(String, String, Beat)] = [
             ("SKELETON", "Kick and snare only. The starting point for everything.", DemoBeats.threeJobs),
-            ("BOOM BAP", "Swung, spaced out, ghost snares.", DemoBeats.boomBapSkeleton),
-            ("TRAP", "Half-time snare, 16th hats.", DemoBeats.trapSkeleton),
-            ("FOUR ON THE FLOOR", "House. Kick every beat, off-beat open hats.", DemoBeats.fourOnFloor),
             ("SHAPED HATS", "Accents and ghosts. Hear what velocity does.", DemoBeats.velocityShaped)
         ]
+        // Genre kits bring their tuning, drive and bus settings with them, so
+        // loading one is a lesson in sound design as much as in patterns.
+        for t in Templates.all {
+            out.append(("\(t.name) KIT",
+                        "\(Int(t.bpm)) BPM · \(t.tagline.lowercased())",
+                        t.beat))
+        }
+        return out
     }
 
     var body: some View {

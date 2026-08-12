@@ -32,10 +32,20 @@ struct LabHomeView: View {
             .buttonStyle(.plain)
 
             Panel(serial: "SND", title: "ABOUT THE SOUND") {
-                Text("Every drum and note in this app is synthesised in real time on your phone — no samples are bundled. That keeps the app small and offline, and it means the kick you hear is built from an oscillator and an envelope, exactly like the ones described in the SOUND stage. It will not sound like a $200 sample pack, and that's fine: the labs are for learning placement, velocity and harmony, not for making your final beat.")
-                    .font(TW.body(14))
-                    .foregroundStyle(theme.fg)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 9) {
+                    Text("Every drum and note here is synthesised in real time on your phone — no samples are bundled, so the app stays small and works with no connection.")
+                        .font(TW.body(14))
+                        .foregroundStyle(theme.fg)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("It is not a beeping toy sequencer. Kicks have separate click, body and sub layers with two pitch envelopes. Hats and cymbals are six square oscillators at inharmonic ratios, the way an 808 builds metal. Claps are four bursts a few milliseconds apart. Underneath that sits a real mixer: a drum bus with saturation and glue compression, kick-triggered sidechain ducking, an eight-comb reverb and a tempo-synced ping-pong delay on sends, stereo width, and a glued and limited master.")
+                        .font(TW.body(14))
+                        .foregroundStyle(theme.fg)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("That's why the genre templates sound like records rather than sketches — and why the MIX panel in the Drum Lab is worth playing with while a loop runs.")
+                        .font(TW.body(13))
+                        .foregroundStyle(theme.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Panel(serial: "OUT", title: "OUTPUT") {
