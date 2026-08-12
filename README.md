@@ -27,6 +27,27 @@ your own team under *Signing & Capabilities*; the bundle ID is
 If the project file ever gets out of step, `project.yml` regenerates an
 equivalent one with [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
+### Getting an unsigned .ipa without a Mac
+
+`.github/workflows/ipa.yml` builds the app on a GitHub macOS runner with code
+signing disabled and uploads `TreadingWater-unsigned.ipa` as a run artifact. It
+fires on every push to a `claude/**` branch, or on demand from the Actions tab
+(*Unsigned IPA → Run workflow*).
+
+The artifact is genuinely unsigned — there's no `_CodeSignature` in the bundle —
+so it will **not** install on a stock device as-is. To get it onto hardware,
+either re-sign it with your own certificate:
+
+```
+codesign -f -s "Apple Development: you@example.com" \
+  --entitlements your.entitlements Payload/TreadingWater.app
+zip -qry TreadingWater-signed.ipa Payload
+```
+
+…or feed the unsigned `.ipa` to Sideloadly or AltStore, which handle signing
+with a free Apple ID (7-day certificates). Opening the project in Xcode and
+running to a connected device is still the simplest route if you have a Mac.
+
 ---
 
 ## The five tabs
