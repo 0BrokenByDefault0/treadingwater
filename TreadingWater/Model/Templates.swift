@@ -712,14 +712,22 @@ enum Templates {
         tint: Ink.plum, family: .rnb
     )
 
-    static let all: [GenreTemplate] =
-        [trap, boomBap, drill] + HipHopTemplates.all
-        + [rnb] + SoulTemplates.all
-        + [house] + ClubTemplates.all
-        + [dnb] + BassTemplates.all
-        + [afrobeats] + GlobalTemplates.all
-        + [lofi] + ChillTemplates.all
-        + PopTemplates.all
+    static let all: [GenreTemplate] = {
+        var out: [GenreTemplate] = [trap, boomBap, drill]
+        out.append(contentsOf: HipHopTemplates.all)
+        out.append(rnb)
+        out.append(contentsOf: SoulTemplates.all)
+        out.append(house)
+        out.append(contentsOf: ClubTemplates.all)
+        out.append(dnb)
+        out.append(contentsOf: BassTemplates.all)
+        out.append(afrobeats)
+        out.append(contentsOf: GlobalTemplates.all)
+        out.append(lofi)
+        out.append(contentsOf: ChillTemplates.all)
+        out.append(contentsOf: PopTemplates.all)
+        return out
+    }()
 
     static func template(_ id: String) -> GenreTemplate? {
         all.first { $0.id == id }

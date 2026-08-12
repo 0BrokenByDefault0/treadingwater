@@ -27,6 +27,10 @@ let package = Package(
                 "TreadingWater/Model/MusicTypes.swift",
                 "TreadingWater/Model/Theory.swift",
                 "TreadingWater/Model/Templates.swift",
+                "TreadingWater/Model/Templates+HipHop.swift",
+                "TreadingWater/Model/Templates+Club.swift",
+                "TreadingWater/Model/Templates+Bass.swift",
+                "TreadingWater/Model/Templates+World.swift",
                 "TreadingWater/Model/DemoBeats.swift",
                 "Tools/RenderPreview/main.swift"
             ]
