@@ -1,0 +1,64 @@
+name: Unsigned IPA
+
+# Builds TreadingWater for a real device with code signing switched off and
+# packages the .app into an unsigned .ipa. The artifact is attached to the run.
+#
+# Unsigned means it will NOT install on a stock device as-is — it has to be
+# re-signed (Sideloadly, AltStore, or `xcrun codesign` with your own cert).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "claude/**"
+    paths-ignore:
+      - "**/*.md"
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          xcodebuild -list -project TreadingWater.xcodeproj
+
+      - name: Build (device, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project TreadingWater.xcodeproj \
+            -scheme TreadingWater \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM="" \
+            ENABLE_USER_SCRIPT_SANDBOXING=NO \
+            build
+
+      - name: Package .ipa
+        run: |
+          APP="build/Build/Products/Release-iphoneos/TreadingWater.app"
+          test -d "$APP" || { echo "no .app at $APP"; ls -R build/Build/Products || true; exit 1; }
+          rm -rf Payload TreadingWater-unsigned.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry TreadingWater-unsigned.ipa Payload
+          ls -lh TreadingWater-unsigned.ipa
+          unzip -l TreadingWater-unsigned.ipa | head -20
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TreadingWater-unsigned-ipa
+          path: TreadingWater-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 30
